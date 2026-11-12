@@ -45,7 +45,7 @@ val downloadTesseractModels by tasks.registering {
     )
 
     doLast {
-        val dir = modelDir.get().asFile
+        val dir = modelDir.asFile
         dir.mkdirs()
 
         val models = mapOf(
