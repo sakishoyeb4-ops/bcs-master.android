@@ -1,9 +1,10 @@
+
 pluginManagement {
-repositories {
-google()
-mavenCentral()
-gradlePluginPortal()
-}
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
 }
 
 dependencyResolutionManagement {
@@ -16,3 +17,6 @@ dependencyResolutionManagement {
         }
     }
 }
+
+rootProject.name = "BCS Master"
+include(":app")
