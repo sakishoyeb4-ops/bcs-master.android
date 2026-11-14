@@ -34,8 +34,10 @@ private val Green = Color(0xFF16865C)
 private val PageBackground = Color(0xFFF4F7FA)
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             MaterialTheme {
                 BCSMasterApp()
@@ -52,7 +54,9 @@ private fun performOcr(
     val dataDir = File(context.filesDir, "tesseract")
     val tessdataDir = File(dataDir, "tessdata")
 
-    tessdataDir.mkdirs()
+    if (!tessdataDir.exists()) {
+        tessdataDir.mkdirs()
+    }
 
     val models = listOf(
         "ben.traineddata",
@@ -60,10 +64,13 @@ private fun performOcr(
     )
 
     for (model in models) {
+
         val target = File(tessdataDir, model)
 
         if (!target.exists() || target.length() == 0L) {
+
             context.assets.open("tessdata/$model").use { input ->
+
                 target.outputStream().use { output ->
                     input.copyTo(output)
                 }
@@ -74,6 +81,7 @@ private fun performOcr(
     val api = TessBaseAPI()
 
     try {
+
         val initialized = api.init(
             dataDir.absolutePath,
             "ben+eng"
@@ -85,12 +93,11 @@ private fun performOcr(
 
         api.setImage(bitmap)
 
-        val result = api.utF8Text
-
-        return result?.trim().orEmpty()
+        return api.utF8Text?.trim().orEmpty()
 
     } finally {
-        api.end()
+
+        api.recycle()
     }
 }
 
@@ -118,7 +125,9 @@ fun BCSMasterApp() {
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
+
         if (bitmap != null) {
+
             selectedImage = bitmap
             extractedText = ""
             status = "ক্যামেরা থেকে ছবি নেওয়া হয়েছে"
@@ -130,21 +139,28 @@ fun BCSMasterApp() {
     ) { uri ->
 
         if (uri != null) {
+
             try {
+
                 val bitmap = context.contentResolver
-                    .openInputStream(uri)?.use {
-                        BitmapFactory.decodeStream(it)
+                    .openInputStream(uri)?.use { input ->
+
+                        BitmapFactory.decodeStream(input)
                     }
 
                 if (bitmap != null) {
+
                     selectedImage = bitmap
                     extractedText = ""
                     status = "Gallery থেকে ছবি নেওয়া হয়েছে"
+
                 } else {
+
                     status = "ছবি পড়া যায়নি"
                 }
 
             } catch (e: Exception) {
+
                 status = "ছবি খুলতে সমস্যা হয়েছে"
             }
         }
@@ -159,14 +175,15 @@ fun BCSMasterApp() {
     ) {
 
         Text(
-            "BCS MASTER",
+            text = "BCS MASTER",
             fontSize = 27.sp,
             fontWeight = FontWeight.Bold,
             color = Navy
         )
 
         Text(
-            "Smart Job Solution Question Scanner",
+            text = "Smart Job Solution Question Scanner",
+            fontSize = 14.sp,
             color = Color.Gray
         )
 
@@ -179,10 +196,13 @@ fun BCSMasterApp() {
                 containerColor = Navy
             )
         ) {
-            Column(Modifier.padding(20.dp)) {
+
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
 
                 Text(
-                    "ছবি থেকে পরীক্ষা তৈরি করো",
+                    text = "ছবি থেকে পরীক্ষা তৈরি করো",
                     color = Color.White,
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
@@ -191,7 +211,7 @@ fun BCSMasterApp() {
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    "Job Solution বইয়ের ছবি তুলে প্রশ্ন ব্যাংক তৈরি করো।",
+                    text = "Job Solution বইয়ের ছবি তুলে নিজের প্রশ্ন ব্যাংক তৈরি করো।",
                     color = Color.White
                 )
             }
@@ -200,7 +220,7 @@ fun BCSMasterApp() {
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Question Scanner",
+            text = "Question Scanner",
             fontSize = 21.sp,
             fontWeight = FontWeight.Bold,
             color = Navy
@@ -210,13 +230,17 @@ fun BCSMasterApp() {
 
         Button(
             onClick = {
-                cameraLauncher.launch(null)
+                galleryLauncher.let {
+                    cameraLauncher.launch(null)
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Green
-            )
+            ),
+            shape = RoundedCornerShape(14.dp)
         ) {
+
             Text("ক্যামেরা দিয়ে ছবি তুলুন")
         }
 
@@ -224,6 +248,7 @@ fun BCSMasterApp() {
 
         OutlinedButton(
             onClick = {
+
                 galleryLauncher.launch(
                     PickVisualMediaRequest(
                         ActivityResultContracts
@@ -231,8 +256,10 @@ fun BCSMasterApp() {
                     )
                 )
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp)
         ) {
+
             Text("Gallery থেকে ছবি নিন")
         }
 
@@ -242,17 +269,20 @@ fun BCSMasterApp() {
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
-            )
+            ),
+            shape = RoundedCornerShape(16.dp)
         ) {
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(14.dp),
+
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
                 Text(
-                    "ছবির Preview",
+                    text = "ছবির Preview",
                     fontWeight = FontWeight.Bold,
                     color = Navy,
                     fontSize = 18.sp
@@ -263,6 +293,7 @@ fun BCSMasterApp() {
                 val image = selectedImage
 
                 if (image != null) {
+
                     Image(
                         bitmap = image.asImageBitmap(),
                         contentDescription = "Question image",
@@ -271,7 +302,9 @@ fun BCSMasterApp() {
                             .heightIn(max = 350.dp),
                         contentScale = ContentScale.Fit
                     )
+
                 } else {
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -279,6 +312,7 @@ fun BCSMasterApp() {
                             .background(PageBackground),
                         contentAlignment = Alignment.Center
                     ) {
+
                         Text("এখানে বইয়ের ছবি দেখা যাবে")
                     }
                 }
@@ -286,7 +320,7 @@ fun BCSMasterApp() {
                 Spacer(Modifier.height(12.dp))
 
                 Text(
-                    status,
+                    text = status,
                     color = Green,
                     fontSize = 13.sp
                 )
@@ -309,8 +343,11 @@ fun BCSMasterApp() {
                     Thread {
 
                         val result = try {
+
                             performOcr(context, bitmap)
+
                         } catch (e: Exception) {
+
                             "OCR Error: ${e.message ?: "অজানা সমস্যা"}"
                         }
 
@@ -320,6 +357,7 @@ fun BCSMasterApp() {
                                 extractedText = result
 
                                 status = when {
+
                                     result.startsWith("OCR Error:") ->
                                         "OCR চালাতে সমস্যা হয়েছে"
 
@@ -336,15 +374,21 @@ fun BCSMasterApp() {
                     }.start()
                 }
             },
+
             enabled = selectedImage != null && !isProcessing,
+
             modifier = Modifier.fillMaxWidth(),
+
             colors = ButtonDefaults.buttonColors(
                 containerColor = Green
             ),
+
             shape = RoundedCornerShape(14.dp)
+
         ) {
 
             if (isProcessing) {
+
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     color = Color.White,
@@ -354,7 +398,9 @@ fun BCSMasterApp() {
                 Spacer(Modifier.width(10.dp))
 
                 Text("লেখা শনাক্ত হচ্ছে...")
+
             } else {
+
                 Text("ছবি থেকে লেখা শনাক্ত করুন")
             }
         }
@@ -370,10 +416,12 @@ fun BCSMasterApp() {
                 )
             ) {
 
-                Column(Modifier.padding(16.dp)) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
 
                     Text(
-                        "OCR Result",
+                        text = "OCR Result",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Navy
@@ -382,7 +430,7 @@ fun BCSMasterApp() {
                     Spacer(Modifier.height(12.dp))
 
                     Text(
-                        extractedText,
+                        text = extractedText,
                         color = Color.DarkGray,
                         fontSize = 15.sp
                     )
@@ -391,6 +439,7 @@ fun BCSMasterApp() {
 
                     OutlinedButton(
                         onClick = {
+
                             val clipboard =
                                 context.getSystemService(
                                     android.content.Context
@@ -408,6 +457,7 @@ fun BCSMasterApp() {
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
+
                         Text("লেখা Copy করুন")
                     }
                 }
@@ -417,8 +467,10 @@ fun BCSMasterApp() {
         Spacer(Modifier.height(20.dp))
 
         Text(
-            "BCS MASTER • Offline OCR",
-            modifier = Modifier.align(Alignment.CenterHorizontally),
+            text = "BCS MASTER • Offline OCR",
+            modifier = Modifier.align(
+                Alignment.CenterHorizontally
+            ),
             color = Color.Gray,
             fontSize = 12.sp
         )
