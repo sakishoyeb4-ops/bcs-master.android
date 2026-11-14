@@ -1,12 +1,13 @@
 
 package com.bcsmaster.app
-import androidx.activity.result.PickVisualMediaRequest
+
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.sp
 
 private val Navy = Color(0xFF102A43)
 private val Green = Color(0xFF16865C)
-private val Background = Color(0xFFF4F7FA)
+private val PageBackground = Color(0xFFF4F7FA)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,11 +45,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun BCSMasterApp() {
     val context = LocalContext.current
-    var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
-    var status by remember { mutableStateOf("এখনো কোনো ছবি নির্বাচন করা হয়নি") }
+    var selectedImage by remember {
+        mutableStateOf<Bitmap?>(null)
+    }
+    var status by remember {
+        mutableStateOf("এখনো কোনো ছবি নির্বাচন করা হয়নি")
+    }
 
     val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicturePreview()
+        contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
         if (bitmap != null) {
             selectedImage = bitmap
@@ -56,21 +61,21 @@ fun BCSMasterApp() {
         }
     }
 
-    val galleryLauncher.launch(
-    PickVisualMediaRequest(
-        ActivityResultContracts.PickVisualMedia.ImageOnly
-    )
-)
-  { uri ->
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
         if (uri != null) {
             try {
-                context.contentResolver.openInputStream(uri)?.use {
-                    selectedImage = BitmapFactory.decodeStream(it)
-                }
-                status = if (selectedImage != null) {
-                    "Gallery থেকে ছবি নেওয়া হয়েছে"
+                val bitmap = context.contentResolver
+                    .openInputStream(uri)?.use {
+                        BitmapFactory.decodeStream(it)
+                    }
+
+                if (bitmap != null) {
+                    selectedImage = bitmap
+                    status = "Gallery থেকে ছবি নেওয়া হয়েছে"
                 } else {
-                    "ছবি পড়া যায়নি"
+                    status = "ছবি পড়া যায়নি"
                 }
             } catch (e: Exception) {
                 status = "ছবি খুলতে সমস্যা হয়েছে"
@@ -81,7 +86,7 @@ fun BCSMasterApp() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Background)
+            .background(PageBackground)
             .verticalScroll(rememberScrollState())
             .padding(18.dp)
     ) {
@@ -118,7 +123,7 @@ fun BCSMasterApp() {
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    "Job Solution বইয়ের MCQ ছবি তুলে নিজের প্রশ্ন ব্যাংক তৈরি করো।",
+                    "Job Solution বইয়ের MCQ-এর ছবি তুলে নিজের প্রশ্ন ব্যাংক তৈরি করো।",
                     color = Color.White
                 )
             }
@@ -136,14 +141,16 @@ fun BCSMasterApp() {
         Spacer(Modifier.height(12.dp))
 
         Button(
-            onClick = { cameraLauncher.launch(null) },
+            onClick = {
+                cameraLauncher.launch(null)
+            },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Green
             ),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text("📷  ক্যামেরা দিয়ে ছবি তুলুন")
+            Text("ক্যামেরা দিয়ে ছবি তুলুন")
         }
 
         Spacer(Modifier.height(10.dp))
@@ -151,13 +158,16 @@ fun BCSMasterApp() {
         OutlinedButton(
             onClick = {
                 galleryLauncher.launch(
-                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                    PickVisualMediaRequest(
+                        ActivityResultContracts
+                            .PickVisualMedia.ImageOnly
+                    )
                 )
             },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text("🖼  Gallery থেকে ছবি নিন")
+            Text("Gallery থেকে ছবি নিন")
         }
 
         Spacer(Modifier.height(16.dp))
@@ -184,10 +194,12 @@ fun BCSMasterApp() {
 
                 Spacer(Modifier.height(12.dp))
 
-                if (selectedImage != null) {
+                val image = selectedImage
+
+                if (image != null) {
                     Image(
-                        bitmap = selectedImage!!.asImageBitmap(),
-                        contentDescription = "Selected question page",
+                        bitmap = image.asImageBitmap(),
+                        contentDescription = "Question page",
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 350.dp),
@@ -199,7 +211,7 @@ fun BCSMasterApp() {
                             .fillMaxWidth()
                             .height(180.dp)
                             .background(
-                                Background,
+                                PageBackground,
                                 RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
@@ -250,10 +262,11 @@ fun BCSMasterApp() {
 
         Text(
             "BCS MASTER • Offline Learning",
-            modifier = Modifier.align(Alignment.CenterHorizontally),
+            modifier = Modifier.align(
+                Alignment.CenterHorizontally
+            ),
             color = Color.Gray,
             fontSize = 12.sp
         )
     }
 }
-
