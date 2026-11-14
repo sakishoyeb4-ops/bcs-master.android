@@ -1,173 +1,224 @@
+
 package com.bcsmaster.app
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+private val Navy = Color(0xFF102A43)
+private val Green = Color(0xFF16865C)
+private val Background = Color(0xFFF4F7FA)
+
 class MainActivity : ComponentActivity() {
-override fun onCreate(savedInstanceState: Bundle?) {
-super.onCreate(savedInstanceState)
-setContent {
-MaterialTheme {
-BCSMasterApp()
-}
-}
-}
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            MaterialTheme {
+                BCSMasterApp()
+            }
+        }
+    }
 }
 
 @Composable
 fun BCSMasterApp() {
-val navy = Color(0xFF102A43)
-val green = Color(0xFF16865C)
+    val context = LocalContext.current
+    var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
+    var status by remember { mutableStateOf("এখনো কোনো ছবি নির্বাচন করা হয়নি") }
 
-Scaffold(
-    containerColor = Color(0xFFF4F7FA)
-) { padding ->
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            selectedImage = bitmap
+            status = "ক্যামেরা থেকে ছবি নেওয়া হয়েছে"
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use {
+                    selectedImage = BitmapFactory.decodeStream(it)
+                }
+                status = if (selectedImage != null) {
+                    "Gallery থেকে ছবি নেওয়া হয়েছে"
+                } else {
+                    "ছবি পড়া যায়নি"
+                }
+            } catch (e: Exception) {
+                status = "ছবি খুলতে সমস্যা হয়েছে"
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(padding)
+            .background(Background)
             .verticalScroll(rememberScrollState())
             .padding(18.dp)
     ) {
-
         Text(
-            text = "BCS MASTER",
+            "BCS MASTER",
             fontSize = 27.sp,
             fontWeight = FontWeight.Bold,
-            color = navy
+            color = Navy
         )
 
         Text(
-            text = "Your Complete BCS Preparation Partner",
-            fontSize = 13.sp,
+            "Smart Job Solution Question Scanner",
+            fontSize = 14.sp,
             color = Color.Gray
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(22.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
-                containerColor = navy
+                containerColor = Navy
             )
         ) {
-            Column(
-                modifier = Modifier.padding(22.dp)
-            ) {
+            Column(Modifier.padding(20.dp)) {
                 Text(
-                    text = "Welcome to BCS Master!",
+                    "ছবি থেকে পরীক্ষা তৈরি করো",
                     color = Color.White,
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text = "Prepare today. Succeed tomorrow.",
-                    color = Color.White.copy(alpha = 0.85f)
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = "Your journey to becoming a BCS Cadre starts here.",
-                    color = Color.White,
-                    fontSize = 14.sp
+                    "Job Solution বইয়ের MCQ ছবি তুলে নিজের প্রশ্ন ব্যাংক তৈরি করো।",
+                    color = Color.White
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(22.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Your Dashboard",
+            "Question Scanner",
             fontSize = 21.sp,
             fontWeight = FontWeight.Bold,
-            color = navy
+            color = Navy
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
-        Row(
+        Button(
+            onClick = { cameraLauncher.launch(null) },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Green
+            ),
+            shape = RoundedCornerShape(14.dp)
         ) {
-            DashboardStat(
-                title = "Subjects",
-                value = "10",
-                modifier = Modifier.weight(1f)
-            )
-            DashboardStat(
-                title = "Questions",
-                value = "0",
-                modifier = Modifier.weight(1f)
-            )
-            DashboardStat(
-                title = "Tests",
-                value = "0",
-                modifier = Modifier.weight(1f)
-            )
+            Text("📷  ক্যামেরা দিয়ে ছবি তুলুন")
         }
 
-        Spacer(modifier = Modifier.height(26.dp))
+        Spacer(Modifier.height(10.dp))
 
-        Text(
-            text = "Start Learning",
-            fontSize = 21.sp,
-            fontWeight = FontWeight.Bold,
-            color = navy
-        )
+        OutlinedButton(
+            onClick = {
+                galleryLauncher.launch(
+                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp)
+        ) {
+            Text("🖼  Gallery থেকে ছবি নিন")
+        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        LearningCard(
-            emoji = "📚",
-            title = "Subject-wise MCQ",
-            subtitle = "Practice questions by subject"
-        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "ছবির Preview",
+                    fontWeight = FontWeight.Bold,
+                    color = Navy,
+                    fontSize = 17.sp
+                )
 
-        LearningCard(
-            emoji = "📝",
-            title = "Model Test",
-            subtitle = "Take a full-length BCS mock exam"
-        )
+                Spacer(Modifier.height(12.dp))
 
-        LearningCard(
-            emoji = "📖",
-            title = "Previous BCS Questions",
-            subtitle = "Practice previous examination questions"
-        )
+                if (selectedImage != null) {
+                    Image(
+                        bitmap = selectedImage!!.asImageBitmap(),
+                        contentDescription = "Selected question page",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 350.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .background(
+                                Background,
+                                RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "এখানে বইয়ের ছবি দেখা যাবে",
+                            color = Color.Gray
+                        )
+                    }
+                }
 
-        LearningCard(
-            emoji = "🔤",
-            title = "English Vocabulary",
-            subtitle = "Build your vocabulary every day"
-        )
+                Spacer(Modifier.height(12.dp))
 
-        LearningCard(
-            emoji = "📊",
-            title = "My Progress",
-            subtitle = "Track your preparation and results"
-        )
+                Text(
+                    status,
+                    color = Green,
+                    fontSize = 13.sp
+                )
+            }
+        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -175,115 +226,30 @@ Scaffold(
                 containerColor = Color(0xFFE0F2E9)
             )
         ) {
-            Column(
-                modifier = Modifier.padding(18.dp)
-            ) {
+            Column(Modifier.padding(16.dp)) {
                 Text(
-                    text = "💡 Daily Motivation",
+                    "পরবর্তী ধাপ: OCR",
                     fontWeight = FontWeight.Bold,
-                    color = green,
+                    color = Green,
                     fontSize = 17.sp
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
 
                 Text(
-                    text = "Consistency is the key to success. Study a little every day and keep moving forward!",
-                    color = navy
+                    "ছবি থেকে বাংলা ও ইংরেজি লেখা শনাক্ত করে প্রশ্ন ও অপশন তৈরি করা হবে।",
+                    color = Navy
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "BCS MASTER • Version 1.0",
+            "BCS MASTER • Offline Learning",
             modifier = Modifier.align(Alignment.CenterHorizontally),
             color = Color.Gray,
             fontSize = 12.sp
         )
     }
-}
-
-}
-
-@Composable
-fun DashboardStat(
-title: String,
-value: String,
-modifier: Modifier = Modifier
-) {
-Card(
-modifier = modifier,
-shape = RoundedCornerShape(14.dp),
-colors = CardDefaults.cardColors(
-containerColor = Color.White
-)
-) {
-Column(
-modifier = Modifier.padding(12.dp),
-horizontalAlignment = Alignment.CenterHorizontally
-) {
-Text(
-text = value,
-fontSize = 25.sp,
-fontWeight = FontWeight.Bold,
-color = Color(0xFF16865C)
-)
-
-        Text(
-            text = title,
-            fontSize = 11.sp,
-            color = Color.DarkGray
-        )
-    }
-}
-
-}
-
-@Composable
-fun LearningCard(
-emoji: String,
-title: String,
-subtitle: String
-) {
-Card(
-modifier = Modifier
-.fillMaxWidth()
-.padding(vertical = 6.dp),
-shape = RoundedCornerShape(15.dp),
-colors = CardDefaults.cardColors(
-containerColor = Color.White
-)
-) {
-Row(
-modifier = Modifier.padding(16.dp),
-verticalAlignment = Alignment.CenterVertically
-) {
-Text(
-text = emoji,
-fontSize = 28.sp
-)
-
-        Spacer(modifier = Modifier.width(15.dp))
-
-        Column {
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color(0xFF102A43)
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = subtitle,
-                fontSize = 12.sp,
-                color = Color.Gray
-            )
-        }
-    }
-}
-
 }
