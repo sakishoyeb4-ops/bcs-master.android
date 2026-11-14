@@ -1,0 +1,30 @@
+BCS Master update files
+
+1) Replace:
+app/src/main/java/com/bcsmaster/app/MainActivity.kt
+with MainActivity.kt
+
+2) Replace:
+app/src/main/AndroidManifest.xml
+with AndroidManifest.xml
+
+3) Create folder if it does not exist:
+app/src/main/res/xml/
+Then add file_paths.xml there:
+app/src/main/res/xml/file_paths.xml
+
+4) app/build.gradle.kts does not need a new dependency for FileProvider;
+androidx.core:core-ktx is already present.
+
+Features:
+- separate SQLite database files for each listed BCS subject
+- wrong answer review in exam result
+- create random 200-question PDF from selected subjects
+- PDF heading: সোয়েব BCS কেয়ার
+- answer key at the end
+- share PDF to compatible apps; choose a print-capable app to print
+
+Important:
+- Existing bcs_master.db is retained and used for General Knowledge.
+- Do not clear app data or uninstall before testing.
+- Build/test has not been run in Android Studio in this session.
