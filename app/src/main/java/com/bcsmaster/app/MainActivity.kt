@@ -1,6 +1,6 @@
 
 package com.bcsmaster.app
-
+import androidx.activity.result.PickVisualMediaRequest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
@@ -56,9 +56,12 @@ fun BCSMasterApp() {
         }
     }
 
-    val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
+    val galleryLauncher.launch(
+    PickVisualMediaRequest(
+        ActivityResultContracts.PickVisualMedia.ImageOnly
+    )
+)
+  { uri ->
         if (uri != null) {
             try {
                 context.contentResolver.openInputStream(uri)?.use {
