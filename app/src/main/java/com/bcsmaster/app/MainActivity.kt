@@ -764,86 +764,207 @@ fun QuestionListScreen(
 }
 
 // ------------------------------------------------------------
-// RANDOM MCQ EXAM
+// CUSTOM EXAM: USER CHOOSES QUESTION COUNT AND TIME
 // ------------------------------------------------------------
 
 @Composable
 fun QuizScreen(db: QuestionDB) {
-    val questions = remember { db.getAll().shuffled().take(10) }
+    val allQuestions = remember { db.getAll() }
 
+    var questionCountText by remember { mutableStateOf("20") }
+    var minutesText by remember { mutableStateOf("20") }
+    var setupError by remember { mutableStateOf("") }
+
+    var questions by remember { mutableStateOf<List<Question>>(emptyList()) }
     var index by remember { mutableIntStateOf(0) }
-    var selected by remember { mutableIntStateOf(-1) }
-    var score by remember { mutableIntStateOf(0) }
-    var checked by remember { mutableStateOf(false) }
-    var finished by remember { mutableStateOf(false) }
+    var selectedAnswers by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    var remainingSeconds by remember { mutableIntStateOf(0) }
+    var examStarted by remember { mutableStateOf(false) }
+    var examFinished by remember { mutableStateOf(false) }
+
+    // Countdown runs only while the exam is active.
+    LaunchedEffect(examStarted, examFinished, remainingSeconds) {
+        if (examStarted && !examFinished && remainingSeconds > 0) {
+            kotlinx.coroutines.delay(1000)
+            remainingSeconds -= 1
+        } else if (examStarted && remainingSeconds <= 0) {
+            examFinished = true
+        }
+    }
+
+    fun finishExam() {
+        examFinished = true
+        examStarted = false
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
     ) {
-        Text("Random MCQ পরীক্ষা", style = MaterialTheme.typography.titleLarge)
+        Text("পরীক্ষার সেটিংস", style = MaterialTheme.typography.titleLarge)
 
-        if (questions.isEmpty()) {
-            Text("আগে প্রশ্ন যোগ করুন")
-        } else if (finished) {
-            Text("পরীক্ষা শেষ!")
-            Text("মোট নম্বর: $score / ${questions.size}")
-            Button(onClick = {
-                index = 0
-                selected = -1
-                score = 0
-                checked = false
-                finished = false
-            }) {
-                Text("আবার পরীক্ষা")
-            }
-        } else {
-            val q = questions[index]
-            Text("প্রশ্ন ${index + 1} / ${questions.size}")
-            Text(q.subject)
-            Text(q.question, style = MaterialTheme.typography.titleMedium)
+        if (!examStarted && !examFinished) {
+            Text("প্রশ্ন ব্যাংকে মোট ${allQuestions.size}টি প্রশ্ন আছে।")
 
-            q.options.forEachIndexed { i, option ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selected == i,
-                        onClick = { if (!checked) selected = i },
-                        enabled = !checked
-                    )
-                    Text(option)
-                }
-            }
+            OutlinedTextField(
+                value = questionCountText,
+                onValueChange = {
+                    questionCountText = it.filter(Char::isDigit)
+                    setupError = ""
+                },
+                label = { Text("কয়টি প্রশ্ন পরীক্ষা দেবেন?") },
+                supportingText = { Text("যেমন: ২০, ৫০, ১০০") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-            if (checked) {
+            OutlinedTextField(
+                value = minutesText,
+                onValueChange = {
+                    minutesText = it.filter(Char::isDigit)
+                    setupError = ""
+                },
+                label = { Text("সময় কত মিনিট?") },
+                supportingText = { Text("যেমন: ২০, ৩০, ৬০") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (setupError.isNotBlank()) {
                 Text(
-                    if (selected == q.answer) "সঠিক উত্তর!"
-                    else "ভুল! সঠিক উত্তর: ${'ক' + q.answer}"
+                    setupError,
+                    color = MaterialTheme.colorScheme.error
                 )
-                if (q.explanation.isNotBlank()) Text("ব্যাখ্যা: ${q.explanation}")
             }
 
             Button(
-                enabled = selected >= 0 && !checked,
+                modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    checked = true
-                    if (selected == q.answer) score++ else db.markWrong(q.id)
-                }
-            ) {
-                Text("উত্তর যাচাই")
-            }
+                    val count = questionCountText.toIntOrNull()
+                    val minutes = minutesText.toIntOrNull()
 
-            Button(
-                enabled = checked,
-                onClick = {
-                    if (index == questions.lastIndex) {
-                        finished = true
-                    } else {
-                        index++
-                        selected = -1
-                        checked = false
+                    when {
+                        count == null || count <= 0 ->
+                            setupError = "প্রশ্নের সংখ্যা ১ বা তার বেশি দিন।"
+                        minutes == null || minutes <= 0 ->
+                            setupError = "সময় ১ মিনিট বা তার বেশি দিন।"
+                        allQuestions.isEmpty() ->
+                            setupError = "প্রথমে প্রশ্ন ব্যাংকে প্রশ্ন যোগ করুন।"
+                        count > allQuestions.size ->
+                            setupError = "প্রশ্ন ব্যাংকে মাত্র ${allQuestions.size}টি প্রশ্ন আছে। এর বেশি দেওয়া যাবে না।"
+                        else -> {
+                            questions = allQuestions.shuffled().take(count)
+                            index = 0
+                            selectedAnswers = emptyMap()
+                            remainingSeconds = minutes * 60
+                            examFinished = false
+                            examStarted = true
+                            setupError = ""
+                        }
                     }
                 }
             ) {
-                Text(if (index == questions.lastIndex) "ফলাফল দেখুন" else "পরবর্তী প্রশ্ন")
+                Text("পরীক্ষা শুরু করুন")
+            }
+
+            Text(
+                "পরীক্ষা শুরু করার আগে প্রশ্নের সংখ্যা ও সময় নিজে নির্ধারণ করতে পারবেন।",
+                color = MaterialTheme.colorScheme.secondary
+            )
+        } else {
+            val total = questions.size
+            val answeredCount = selectedAnswers.size
+
+            if (examFinished) {
+                val score = questions.count { q ->
+                    selectedAnswers[q.id] == q.answer
+                }
+                val unanswered = total - answeredCount
+
+                Text("পরীক্ষা শেষ", style = MaterialTheme.typography.headlineSmall)
+                Text("মোট প্রশ্ন: $total")
+                Text("সঠিক উত্তর: $score")
+                Text("ভুল উত্তর: ${answeredCount - score}")
+                Text("উত্তর দেননি: $unanswered")
+                Text("প্রাপ্ত নম্বর: $score / $total")
+
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        examStarted = false
+                        examFinished = false
+                        questions = emptyList()
+                        selectedAnswers = emptyMap()
+                        index = 0
+                    }
+                ) {
+                    Text("নতুন পরীক্ষা সেট করুন")
+                }
+            } else if (questions.isNotEmpty()) {
+                val q = questions[index]
+                val selected = selectedAnswers[q.id] ?: -1
+                val minutesLeft = remainingSeconds / 60
+                val secondsLeft = remainingSeconds % 60
+                val timeText = "%02d:%02d".format(minutesLeft, secondsLeft)
+
+                Text(
+                    "সময় বাকি: $timeText",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = if (remainingSeconds <= 60)
+                        MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.primary
+                )
+                Text("প্রশ্ন ${index + 1} / $total")
+                Text("উত্তর দিয়েছেন: $answeredCount / $total")
+
+                LinearProgressIndicator(
+                    progress = { (index + 1).toFloat() / total.toFloat() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(12.dp))
+                Text(q.subject, color = MaterialTheme.colorScheme.secondary)
+                Text(q.question, style = MaterialTheme.typography.titleMedium)
+
+                q.options.forEachIndexed { optionIndex, option ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = selected == optionIndex,
+                            onClick = {
+                                selectedAnswers =
+                                    selectedAnswers + (q.id to optionIndex)
+                            }
+                        )
+                        Text(option)
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    OutlinedButton(
+                        enabled = index > 0,
+                        onClick = { index-- }
+                    ) {
+                        Text("আগের প্রশ্ন")
+                    }
+
+                    Button(
+                        enabled = index < total - 1,
+                        onClick = { index++ }
+                    ) {
+                        Text("পরের প্রশ্ন")
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { finishExam() }
+                ) {
+                    Text("পরীক্ষা শেষ করুন")
+                }
             }
         }
     }
