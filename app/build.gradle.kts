@@ -96,5 +96,8 @@ dependencies {
         "cz.adaptech.tesseract4android:tesseract4android:4.8.0"
     )
 
+    // Daily automatic news update
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
