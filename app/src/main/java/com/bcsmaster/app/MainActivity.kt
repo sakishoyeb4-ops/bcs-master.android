@@ -453,6 +453,7 @@ class MainActivity : ComponentActivity() {
 // APP HOME / NAVIGATION
 // ------------------------------------------------------------
 
+
 @Composable
 fun BCSMasterApp() {
     val context = LocalContext.current
@@ -462,25 +463,62 @@ fun BCSMasterApp() {
     var refresh by remember { mutableIntStateOf(0) }
 
     Column(
-        Modifier.fillMaxSize().padding(16.dp)
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
-        Text("BCS MASTER", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "BCS MASTER",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
         Text("Offline BCS Preparation")
+
         Spacer(Modifier.height(12.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { page = "add" }) { Text("প্রশ্ন যোগ") }
-            Button(onClick = { page = "bank"; refresh++ }) { Text("প্রশ্ন ব্যাংক") }
+            Button(onClick = { page = "add" }) {
+                Text("প্রশ্ন যোগ")
+            }
+
+            Button(onClick = {
+                page = "bank"
+                refresh++
+            }) {
+                Text("প্রশ্ন ব্যাংক")
+            }
         }
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { page = "quiz"; refresh++ }) { Text("পরীক্ষা") }
-            Button(onClick = { page = "wrong"; refresh++ }) { Text("ভুল প্রশ্ন") }
+            Button(onClick = {
+                page = "quiz"
+                refresh++
+            }) {
+                Text("পরীক্ষা")
+            }
+
+            Button(onClick = {
+                page = "wrong"
+                refresh++
+            }) {
+                Text("ভুল প্রশ্ন")
+            }
         }
+
         OutlinedButton(onClick = { page = "ocr" }) {
             Text("বই স্ক্যান করে প্রশ্ন যোগ")
         }
+
         OutlinedButton(onClick = { page = "pdf" }) {
             Text("২০০ প্রশ্নের PDF তৈরি")
+        }
+
+        // নতুন সংবাদ ফিচার
+        OutlinedButton(
+            onClick = { page = "news" },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("গুরুত্বপূর্ণ সংবাদ")
         }
 
         HorizontalDivider()
@@ -490,26 +528,46 @@ fun BCSMasterApp() {
                 refresh++
                 page = "bank"
             }
+
             "ocr" -> OcrScreen(db) {
                 refresh++
                 page = "bank"
             }
+
             "bank" -> key(refresh) {
-                QuestionListScreen(db, false) { refresh++ }
+                QuestionListScreen(db, false) {
+                    refresh++
+                }
             }
+
             "wrong" -> key(refresh) {
-                QuestionListScreen(db, true) { refresh++ }
+                QuestionListScreen(db, true) {
+                    refresh++
+                }
             }
+
             "quiz" -> key(refresh) {
                 QuizScreen(db)
             }
+
             "pdf" -> PdfExportScreen(db)
+
+            // নতুন NewsScreen
+            "news" -> NewsScreen()
+
             else -> {
                 Column(Modifier.padding(top = 24.dp)) {
                     Text("স্বাগতম!")
                     Text("সংরক্ষিত প্রশ্ন: ${db.getAll().size}")
                     Text("ভুল প্রশ্ন: ${db.getAll(true).size}")
                     Text("সম্পূর্ণ অফলাইন অনুশীলন")
+                }
+            }
+        }
+    }
+}
+
+
                 }
             }
         }
