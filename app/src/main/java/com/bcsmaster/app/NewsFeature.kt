@@ -21,6 +21,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class NewsItem(
@@ -53,7 +54,7 @@ object NewsRepository {
         "দুর্যোগ", "নদী", "শিক্ষা", "স্বাস্থ্য", "বিজ্ঞান",
         "প্রযুক্তি", "আন্তর্জাতিক", "চুক্তি", "কূটনীতি",
         "বাংলাদেশ ব্যাংক", "বিশ্বব্যাংক", "আইএমএফ",
-        "united nations", "un", "world bank", "imf",
+        "united nations", "world bank", "imf",
         "economy", "inflation", "gdp", "budget",
         "climate change", "environment", "election",
         "constitution", "diplomacy", "international",
@@ -79,8 +80,7 @@ object NewsRepository {
     }
 
     private fun readTag(parser: XmlPullParser): String {
-        val text = parser.nextText()
-        return cleanHtml(text)
+        return cleanHtml(parser.nextText())
     }
 
     private fun parseFeed(source: String, feedUrl: String): List<NewsItem> {
@@ -88,7 +88,7 @@ object NewsRepository {
         connection.connectTimeout = 12000
         connection.readTimeout = 12000
         connection.setRequestProperty("User-Agent", "BCSMaster/1.0")
-        
+
         try {
             connection.inputStream.use { input ->
                 val parser = Xml.newPullParser()
@@ -114,22 +114,31 @@ object NewsRepository {
                                     description = ""
                                     date = ""
                                 }
-                                "title" -> if (insideItem) title = readTag(parser)
+
+                                "title" -> if (insideItem) {
+                                    title = readTag(parser)
+                                }
+
                                 "link" -> if (insideItem) {
                                     val href = parser.getAttributeValue(null, "href")
                                     link = href ?: readTag(parser)
                                 }
+
                                 "description", "summary", "content" ->
-                                    if (insideItem) description = readTag(parser)
+                                    if (insideItem) {
+                                        description = readTag(parser)
+                                    }
+
                                 "pubdate", "published", "updated" ->
-                                    if (insideItem) date = readTag(parser)
+                                    if (insideItem) {
+                                        date = readTag(parser)
+                                    }
                             }
                         }
 
                         XmlPullParser.END_TAG -> {
                             if (parser.name.lowercase() in listOf("item", "entry")) {
                                 if (title.isNotBlank() && link.startsWith("http")) {
-                                    val score = calculateScore(title, description)
                                     result.add(
                                         NewsItem(
                                             title = title,
@@ -137,7 +146,7 @@ object NewsRepository {
                                             description = description,
                                             date = date,
                                             source = source,
-                                            score = score
+                                            score = calculateScore(title, description)
                                         )
                                     )
                                 }
@@ -158,7 +167,9 @@ object NewsRepository {
         return try {
             val raw = context.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .getString(KEY, "[]") ?: "[]"
+
             val array = JSONArray(raw)
+
             (0 until array.length()).map { i ->
                 val o = array.getJSONObject(i)
                 NewsItem(
@@ -177,6 +188,7 @@ object NewsRepository {
 
     private fun save(context: Context, items: List<NewsItem>) {
         val array = JSONArray()
+
         items.forEach { item ->
             array.put(
                 JSONObject().apply {
@@ -189,6 +201,7 @@ object NewsRepository {
                 }
             )
         }
+
         context.getSharedPreferences(PREF, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY, array.toString())
@@ -202,7 +215,7 @@ object NewsRepository {
             try {
                 all.addAll(parseFeed(source, url))
             } catch (_: Exception) {
-                // One failed source should not stop other feeds.
+                // অন্য সংবাদমাধ্যম কাজ না করলেও বাকি ফিড চেষ্টা করবে।
             }
         }
 
@@ -214,12 +227,15 @@ object NewsRepository {
             )
             .take(100)
 
-        if (unique.isNotEmpty()) save(context, unique)
+        if (unique.isNotEmpty()) {
+            save(context, unique)
+        }
+
         return unique
     }
 }
 
-// Daily background news update
+// প্রতিদিন স্বয়ংক্রিয় সংবাদ আপডেট
 class NewsRefreshWorker(
     context: Context,
     params: WorkerParameters
@@ -236,10 +252,16 @@ class NewsRefreshWorker(
 }
 
 fun scheduleDailyNewsUpdate(context: Context) {
+    val constraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build()
+
     val request =
         PeriodicWorkRequestBuilder<NewsRefreshWorker>(
             24, TimeUnit.HOURS
-        ).build()
+        )
+            .setConstraints(constraints)
+            .build()
 
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(
         "BCS_DAILY_NEWS_UPDATE",
@@ -251,13 +273,17 @@ fun scheduleDailyNewsUpdate(context: Context) {
 @Composable
 fun NewsScreen() {
     val context = LocalContext.current
+
     val news = remember {
         mutableStateListOf<NewsItem>().apply {
             addAll(NewsRepository.loadSaved(context))
         }
     }
 
+    val scope = rememberCoroutineScope()
+
     var loading by remember { mutableStateOf(false) }
+
     var message by remember {
         mutableStateOf("সংবাদ আপডেট করতে Refresh চাপুন।")
     }
@@ -291,9 +317,7 @@ fun NewsScreen() {
                 loading = true
                 message = "সংবাদ সংগ্রহ করা হচ্ছে..."
 
-                kotlinx.coroutines.CoroutineScope(
-                    kotlinx.coroutines.Dispatchers.Main
-                ).launch {
+                scope.launch {
                     val result = withContext(Dispatchers.IO) {
                         NewsRepository.fetchLatest(context)
                     }
@@ -309,6 +333,7 @@ fun NewsScreen() {
                     } else {
                         "নতুন সংবাদ পাওয়া যায়নি। সংরক্ষিত সংবাদ দেখানো হচ্ছে।"
                     }
+
                     loading = false
                 }
             }
@@ -317,6 +342,7 @@ fun NewsScreen() {
         }
 
         Text(message)
+
         Spacer(Modifier.height(8.dp))
 
         if (news.isEmpty()) {
@@ -338,7 +364,7 @@ fun NewsScreen() {
                     Spacer(Modifier.height(5.dp))
 
                     Text(
-                        "${item.source}  |  ${item.date}",
+                        "${item.source} | ${item.date}",
                         style = MaterialTheme.typography.labelSmall
                     )
 
